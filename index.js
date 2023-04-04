@@ -601,15 +601,226 @@ app.post("/get-all-cast-messages-by-fid", async (req, res) => {
 });
 
 /**
- * TODO:
- *    getReaction
- *    getReactionsByCast
- *    getReactionsByFid
- *    getAllReactionMessagesByFid
- *    getVerification
- *    getVerificationsByFid
- *    getAllVerificationMessagesByFid
+ * Get an active reaction of a particular type made by a user to a cast.
+ * @route POST /get-reaction
+ * @param {number} req.body.fid - The fid of the user.
+ * @param {string} req.body.reactionType - The type of the reaction.
+ * @param {Object} req.body.castId - The cast id.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-reaction \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 8150, "reactionType": "LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
  */
+app.post("/get-reaction", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const { fid, reactionType, castId } = req.body;
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+
+  const reactionResult = await client.getReaction({
+    fid,
+    reactionType,
+    castId,
+  });
+
+  if (reactionResult.isErr()) {
+    return res.status(400).json({ error: reactionResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: reactionResult.value });
+});
+
+/**
+ * Get all active reactions made by users to a cast.
+ * @route POST /get-reactions-by-cast
+ * @param {string} req.body.reactionType - The type of the reaction.
+ * @param {Object} req.body.castId - The cast id.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-reactions-by-cast \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"reactionType": "LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
+ */
+app.post("/get-reactions-by-cast", async (req, res) => {
+  const { reactionType, castId } = req.body;
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+
+  const reactionsResult = await client.getReactionsByCast({
+    reactionType,
+    castId,
+  });
+
+  if (reactionsResult.isErr()) {
+    return res.status(400).json({ error: reactionsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: reactionsResult.value });
+});
+
+/**
+ * Get all active reactions made by a user in reverse chronological order.
+ * @route POST /get-reactions-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @param {string} req.body.reactionType - The type of the reaction.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-reactions-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2, "reactionType": "LIKE"}'
+ */
+app.post("/get-reactions-by-fid", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const { fid, reactionType } = req.body;
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+
+  const reactionsResult = await client.getReactionsByFid({ fid, reactionType });
+
+  if (reactionsResult.isErr()) {
+    return res.status(400).json({ error: reactionsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: reactionsResult.value });
+});
+
+/**
+ * Get all active and inactive reactions made by a user in reverse chronological order.
+ * @route POST /get-all-reaction-messages-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-all-reaction-messages-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-all-reaction-messages-by-fid", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const { fid } = req.body;
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+
+  const reactionsResult = await client.getAllReactionMessagesByFid({ fid });
+
+  if (reactionsResult.isErr()) {
+    return res.status(400).json({ error: reactionsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: reactionsResult.value });
+});
+
+/**
+ * Returns an active verification for a specific Ethereum address made by a user.
+ * @route POST /get-verification
+ * @param {number} req.body.fid - The fid of the user.
+ * @param {string} req.body.address - The Ethereum address being verified.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-verification \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2, "address": "0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5"}'
+ */
+app.post("/get-verification", async (req, res) => {
+  const { fid, address } = req.body;
+
+  if (typeof fid !== "number" || typeof address !== "string") {
+    return res.status(400).json({
+      error:
+        "Invalid input. Expected a number for fid and a string for address.",
+    });
+  }
+
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const addressBytes = hexStringToBytes(address)._unsafeUnwrap();
+
+  const verificationResult = await client.getVerification({
+    fid,
+    address: addressBytes,
+  });
+
+  if (verificationResult.isErr()) {
+    return res
+      .status(400)
+      .json({ error: verificationResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: verificationResult.value });
+});
+
+/**
+ * Returns all active verifications for Ethereum addresses made by a user in reverse chronological order.
+ * @route POST /get-verifications-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-verifications-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-verifications-by-fid", async (req, res) => {
+  const { fid } = req.body;
+
+  if (typeof fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+
+  const verificationsResult = await client.getVerificationsByFid({ fid });
+
+  if (verificationsResult.isErr()) {
+    return res
+      .status(400)
+      .json({ error: verificationsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: verificationsResult.value });
+});
+
+/**
+ * Returns all active and inactive verifications for Ethereum addresses made by a user in reverse chronological order.
+ * @route POST /get-all-verification-messages-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-all-verification-messages-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-all-verification-messages-by-fid", async (req, res) => {
+  const { fid } = req.body;
+
+  if (typeof fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+
+  const verificationsResult = await client.getAllVerificationMessagesByFid({
+    fid,
+  });
+
+  if (verificationsResult.isErr()) {
+    return res
+      .status(400)
+      .json({ error: verificationsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: verificationsResult.value });
+});
 
 // Start the server
 const port = process.env.PORT || 3000;
