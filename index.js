@@ -8,10 +8,12 @@ const {
   hexStringToBytes,
   bytesToUtf8String,
   getSSLHubRpcClient,
+  userDataTypeFromJSON,
 } = require("@farcaster/hub-nodejs");
 
 // Create an instance of the Express application
 const app = express();
+const hubRpcEndpoint = "testnet1.farcaster.xyz:2283";
 
 // Use JSON middleware
 app.use(express.json());
@@ -136,6 +138,235 @@ app.post("/bytes-to-utf8-string", (req, res) => {
   }
   res.json({ ...bytesToUtf8String(byteArray) });
 });
+
+/**
+ * Get an active signer message for a given fid and signer's public key.
+ * @route POST /get-signer
+ * @param {number} req.body.fid - The fid of the user.
+ * @param {string} req.body.signerPubKeyHex - The public key of the signer as a hexadecimal string.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-signer \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{
+ *     "fid": 2,
+ *     "signerPubKeyHex": "5feb9e21f3df044197e634e3602a594a3423c71c6f208876074dc5a3e0d7b9ce"
+ *   }'
+ */
+app.post("/get-signer", async (req, res) => {
+  if (
+    typeof req.body.fid !== "number" ||
+    typeof req.body.signerPubKeyHex !== "string"
+  ) {
+    return res.status(400).json({
+      error:
+        "Invalid input. Expected a number for fid and a string for signerPubKeyHex.",
+    });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid, signerPubKeyHex } = req.body;
+  const signer = hexStringToBytes(signerPubKeyHex)._unsafeUnwrap();
+
+  const signerResult = await client.getSigner({ fid, signer });
+  res.json({ ...signerResult._unsafeUnwrap() });
+});
+
+/**
+ * Get all active signers created by a given fid in reverse chronological order.
+ * @route POST /get-signers-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-signers-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-signers-by-fid", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid } = req.body;
+
+  const signersResult = await client.getAllSignerMessagesByFid({ fid });
+  res.json({ ...signersResult._unsafeUnwrap() });
+});
+
+/**
+ * Get all active and inactive signers created by a given fid in reverse chronological order.
+ * @route POST /get-all-signer-messages-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-all-signer-messages-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-all-signer-messages-by-fid", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid } = req.body;
+
+  const signersResult = await client.getAllSignerMessagesByFid({ fid });
+  res.json({ ...signersResult._unsafeUnwrap() });
+});
+
+/**
+ * Get a specific piece of metadata about the user.
+ * @route POST /get-user-data
+ * @param {number} req.body.fid - The fid of the user.
+ * @param {string} req.body.userDataType - The type of user metadata (e.g., "DISPLAY").
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-user-data \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{
+ *     "fid": 2,
+ *     "userDataType": "USER_DATA_TYPE_DISPLAY"
+ *   }'
+ */
+app.post("/get-user-data", async (req, res) => {
+  console.log(req.body);
+
+  if (
+    typeof req.body.fid !== "number" ||
+    typeof req.body.userDataType !== "string"
+  ) {
+    return res.status(400).json({
+      error:
+        "Invalid input. Expected a number for fid and a string for userDataType.",
+    });
+  }
+
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid } = req.body;
+
+  try {
+    const userDataResult = await client.getUserData({
+      fid,
+      userDataType: userDataTypeFromJSON(req.body.userDataType),
+    });
+    res.json({ ...userDataResult._unsafeUnwrap() });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal server error");
+  }
+});
+
+/**
+ * Get all metadata about a user by their fid.
+ * @route POST /get-user-data-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-user-data-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-user-data-by-fid", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res.status(400).json({
+      error: "Invalid input. Expected a number for fid.",
+    });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid } = req.body;
+
+  const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
+  res.json({ ...userDataResult._unsafeUnwrap() });
+});
+
+/**
+ * Get all metadata about a user by their fid (alias for getUserDataByFid).
+ * @route POST /get-all-user-data-messages-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-all-user-data-messages-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-all-user-data-messages-by-fid", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid } = req.body;
+
+  const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
+  res.json({ ...userDataResult._unsafeUnwrap() });
+});
+
+/**
+ * Get the on-chain event most recently associated with changing an fid's ownership.
+ * @route POST /get-id-registry-event
+ * @param {number} req.body.fid - The fid of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-id-registry-event \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-id-registry-event", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid } = req.body;
+
+  const idResult = await client.getIdRegistryEvent({ fid });
+  res.json({ ...idResult._unsafeUnwrap() });
+});
+
+/**
+ * Get the on-chain event most recently associated with changing an fname's ownership.
+ * @route POST /get-name-registry-event
+ * @param {string} req.body.fname - The fname of the user.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-name-registry-event \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fname": "v"}'
+ */
+app.post("/get-name-registry-event", async (req, res) => {
+  if (typeof req.body.fname !== "string") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a string for fname." });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fname } = req.body;
+  const fnameBytes = new TextEncoder().encode(fname);
+
+  const nrResult = await client.getNameRegistryEvent({ name: fnameBytes });
+  res.json({ ...nrResult._unsafeUnwrap() });
+});
+
+/**
+ * TODO:
+ *    getCast
+ *    getCastsByFid
+ *    getCastsByMention
+ *    getCastsByParent
+ *    getReaction
+ *    getReactionsByCast
+ *    getReactionsByFid
+ *    getAllReactionMessagesByFid
+ *    getVerification
+ *    getVerificationsByFid
+ *    getAllVerificationMessagesByFid
+ */
 
 // Start the server
 const port = process.env.PORT || 3000;
