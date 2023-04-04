@@ -32,7 +32,7 @@ app.get("/", (req, res) => {
  *   --url http://localhost:3000/get-farcaster-time
  */
 app.get("/get-farcaster-time", (req, res) => {
-  res.json({ ...getFarcasterTime() });
+  res.json({ result: getFarcasterTime()._unsafeUnwrap() });
 });
 
 /**
@@ -52,7 +52,14 @@ app.post("/to-farcaster-time", (req, res) => {
   if (typeof msTimestamp !== "number") {
     return res.status(400).json({ error: "Invalid input. Expected a number." });
   }
-  res.json({ ...toFarcasterTime(msTimestamp) });
+
+  const result = toFarcasterTime(msTimestamp);
+
+  if (result.isErr()) {
+    res.status(400).json({ error: result._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: result.value });
 });
 
 /**
@@ -72,7 +79,14 @@ app.post("/from-farcaster-time", (req, res) => {
   if (typeof farcasterTimestamp !== "number") {
     return res.status(400).json({ error: "Invalid input. Expected a number." });
   }
-  res.json({ ...fromFarcasterTime(farcasterTimestamp) });
+
+  const result = fromFarcasterTime(farcasterTimestamp);
+
+  if (result.isErr()) {
+    res.status(400).json({ error: result._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: result.value });
 });
 
 /**
@@ -94,7 +108,14 @@ app.post("/bytes-to-hex-string", (req, res) => {
       .status(400)
       .json({ error: "Invalid input. Expected a Uint8Array." });
   }
-  res.json({ ...bytesToHexString(byteArray) });
+
+  const result = bytesToHexString(byteArray);
+
+  if (result.isErr()) {
+    res.status(400).json({ error: result._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: result.value });
 });
 
 /**
@@ -114,7 +135,14 @@ app.post("/hex-string-to-bytes", (req, res) => {
   if (typeof hexString !== "string") {
     return res.status(400).json({ error: "Invalid input. Expected a string." });
   }
-  res.json({ ...hexStringToBytes(hexString) });
+
+  const result = hexStringToBytes(hexString);
+
+  if (result.isErr()) {
+    res.status(400).json({ error: result._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: result.value });
 });
 
 /**
@@ -136,7 +164,14 @@ app.post("/bytes-to-utf8-string", (req, res) => {
       .status(400)
       .json({ error: "Invalid input. Expected a Uint8Array." });
   }
-  res.json({ ...bytesToUtf8String(byteArray) });
+
+  const result = bytesToUtf8String(byteArray);
+
+  if (result.isErr()) {
+    res.status(400).json({ error: result._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: result.value });
 });
 
 /**
@@ -163,12 +198,19 @@ app.post("/get-signer", async (req, res) => {
         "Invalid input. Expected a number for fid and a string for signerPubKeyHex.",
     });
   }
+
   const client = getSSLHubRpcClient(hubRpcEndpoint);
   const { fid, signerPubKeyHex } = req.body;
-  const signer = hexStringToBytes(signerPubKeyHex)._unsafeUnwrap();
+  const signerResult = await client.getSigner({
+    fid,
+    signer: hexStringToBytes(signerPubKeyHex)._unsafeUnwrap(),
+  });
 
-  const signerResult = await client.getSigner({ fid, signer });
-  res.json({ ...signerResult._unsafeUnwrap() });
+  if (signerResult.isErr()) {
+    return res.status(400).json({ error: signerResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: signerResult.value });
 });
 
 /**
@@ -187,11 +229,17 @@ app.post("/get-signers-by-fid", async (req, res) => {
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid } = req.body;
 
-  const signersResult = await client.getAllSignerMessagesByFid({ fid });
-  res.json({ ...signersResult._unsafeUnwrap() });
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const signersResult = await client.getAllSignerMessagesByFid({
+    fid: req.body.fid,
+  });
+
+  if (signersResult.isErr()) {
+    return res.status(400).json({ error: signersResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: signersResult.value });
 });
 
 /**
@@ -210,11 +258,17 @@ app.post("/get-all-signer-messages-by-fid", async (req, res) => {
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid } = req.body;
 
-  const signersResult = await client.getAllSignerMessagesByFid({ fid });
-  res.json({ ...signersResult._unsafeUnwrap() });
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const signersResult = await client.getAllSignerMessagesByFid({
+    fid: req.body.fid,
+  });
+
+  if (signersResult.isErr()) {
+    return res.status(400).json({ error: signersResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: signersResult.value });
 });
 
 /**
@@ -232,8 +286,6 @@ app.post("/get-all-signer-messages-by-fid", async (req, res) => {
  *   }'
  */
 app.post("/get-user-data", async (req, res) => {
-  console.log(req.body);
-
   if (
     typeof req.body.fid !== "number" ||
     typeof req.body.userDataType !== "string"
@@ -247,16 +299,16 @@ app.post("/get-user-data", async (req, res) => {
   const client = getSSLHubRpcClient(hubRpcEndpoint);
   const { fid } = req.body;
 
-  try {
-    const userDataResult = await client.getUserData({
-      fid,
-      userDataType: userDataTypeFromJSON(req.body.userDataType),
-    });
-    res.json({ ...userDataResult._unsafeUnwrap() });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Internal server error");
+  const userDataResult = await client.getUserData({
+    fid,
+    userDataType: userDataTypeFromJSON(req.body.userDataType),
+  });
+
+  if (userDataResult.isErr()) {
+    return res.status(400).json({ error: userDataResult._unsafeUnwrapErr() });
   }
+
+  res.json({ result: userDataResult.value });
 });
 
 /**
@@ -279,7 +331,12 @@ app.post("/get-user-data-by-fid", async (req, res) => {
   const { fid } = req.body;
 
   const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
-  res.json({ ...userDataResult._unsafeUnwrap() });
+
+  if (userDataResult.isErr()) {
+    return res.status(400).json({ error: userDataResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: userDataResult.value });
 });
 
 /**
@@ -303,7 +360,11 @@ app.post("/get-all-user-data-messages-by-fid", async (req, res) => {
   const { fid } = req.body;
 
   const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
-  res.json({ ...userDataResult._unsafeUnwrap() });
+  if (userDataResult.isErr()) {
+    return res.status(400).json({ error: userDataResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: userDataResult.value });
 });
 
 /**
@@ -326,7 +387,12 @@ app.post("/get-id-registry-event", async (req, res) => {
   const { fid } = req.body;
 
   const idResult = await client.getIdRegistryEvent({ fid });
-  res.json({ ...idResult._unsafeUnwrap() });
+
+  if (idResult.isErr()) {
+    return res.status(400).json({ error: idResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: idResult.value });
 });
 
 /**
@@ -349,8 +415,13 @@ app.post("/get-name-registry-event", async (req, res) => {
   const { fname } = req.body;
   const fnameBytes = new TextEncoder().encode(fname);
 
-  const nrResult = await client.getNameRegistryEvent({ name: fnameBytes });
-  res.json({ ...nrResult._unsafeUnwrap() });
+  const fnameResult = await client.getNameRegistryEvent({ name: fnameBytes });
+
+  if (fnameResult.isErr()) {
+    return res.status(400).json({ error: fnameResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: fnameResult.value });
 });
 
 /**
