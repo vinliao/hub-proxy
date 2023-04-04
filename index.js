@@ -425,11 +425,183 @@ app.post("/get-name-registry-event", async (req, res) => {
 });
 
 /**
+ * Get an active cast for a user.
+ * @route POST /get-cast
+ * @param {number} req.body.fid - The fid of the user.
+ * @param {string} req.body.hash - The hash of the cast.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-cast \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2, "hash": "460a87ace7014adefe4a2944fb62833b1bf2a6be"}'
+ */
+app.post("/get-cast", async (req, res) => {
+  if (typeof req.body.fid !== "number" || typeof req.body.hash !== "string") {
+    return res.status(400).json({
+      error: "Invalid input. Expected a number for fid and a string for hash.",
+    });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid, hash } = req.body;
+  const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
+
+  const castResult = await client.getCast({ fid, hash: castHashBytes });
+
+  if (castResult.isErr()) {
+    return res.status(400).json({ error: castResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: castResult.value });
+});
+
+/**
+ * Get active casts for a user in reverse chronological order.
+ * @route POST /get-casts-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @param {number?} req.body.pageSize - Number of results per page.
+ * @param {Uint8Array?} req.body.pageToken - Token used to fetch the next page, if it exists.
+ * @param {boolean?} req.body.reverse - Reverses the chronological ordering.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-casts-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-casts-by-fid", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid, pageSize, pageToken, reverse } = req.body;
+
+  const castsResult = await client.getCastsByFid({
+    fid,
+    pageSize,
+    pageToken,
+    reverse,
+  });
+
+  if (castsResult.isErr()) {
+    return res.status(400).json({ error: castsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: castsResult.value });
+});
+
+/**
+ * Get all active casts that mention an fid in reverse chronological order.
+ * @route POST /get-casts-by-mention
+ * @param {number} req.body.fid - The fid that is mentioned in the casts.
+ * @param {number?} req.body.pageSize - Number of results per page.
+ * @param {Uint8Array?} req.body.pageToken - Token used to fetch the next page, if it exists.
+ * @param {boolean?} req.body.reverse - Reverses the chronological ordering.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-casts-by-mention \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-casts-by-mention", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid, pageSize, pageToken, reverse } = req.body;
+
+  const castsResult = await client.getCastsByMention({
+    fid,
+    pageSize,
+    pageToken,
+    reverse,
+  });
+
+  if (castsResult.isErr()) {
+    return res.status(400).json({ error: castsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: castsResult.value });
+});
+
+/**
+ * Get all active casts that are replies to a specific cast in reverse chronological order.
+ * @route POST /get-casts-by-parent
+ * @param {number} req.body.fid - The fid of the parent cast.
+ * @param {string} req.body.hash - The hash of the parent cast.
+ * @param {number?} req.body.pageSize - Number of results per page.
+ * @param {Uint8Array?} req.body.pageToken - Token used to fetch the next page, if it exists.
+ * @param {boolean?} req.body.reverse - Reverses the chronological ordering.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-casts-by-parent \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}'
+ */
+app.post("/get-casts-by-parent", async (req, res) => {
+  if (typeof req.body.fid !== "number" || typeof req.body.hash !== "string") {
+    return res.status(400).json({
+      error: "Invalid input. Expected a number for fid and a string for hash.",
+    });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid, hash, pageSize, pageToken, reverse } = req.body;
+  const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
+
+  const castsResult = await client.getCastsByParent({
+    castId: { fid, hash: castHashBytes },
+    pageSize,
+    pageToken,
+    reverse,
+  });
+
+  if (castsResult.isErr()) {
+    return res.status(400).json({ error: castsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: castsResult.value });
+});
+
+/**
+ * Get all active and inactive casts for a user in reverse chronological order.
+ * @route POST /get-all-cast-messages-by-fid
+ * @param {number} req.body.fid - The fid of the user.
+ * @param {number?} req.body.pageSize - Number of results per page.
+ * @param {Uint8Array?} req.body.pageToken - Token used to fetch the next page, if it exists.
+ * @param {boolean?} req.body.reverse - Reverses the chronological ordering.
+ * @example
+ * curl --request POST \
+ *   --url http://localhost:3000/get-all-cast-messages-by-fid \
+ *   --header 'Content-Type: application/json' \
+ *   --data '{"fid": 2}'
+ */
+app.post("/get-all-cast-messages-by-fid", async (req, res) => {
+  if (typeof req.body.fid !== "number") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a number for fid." });
+  }
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const { fid, pageSize, pageToken, reverse } = req.body;
+
+  const castsResult = await client.getAllCastMessagesByFid({
+    fid,
+    pageSize,
+    pageToken,
+    reverse,
+  });
+
+  if (castsResult.isErr()) {
+    return res.status(400).json({ error: castsResult._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: castsResult.value });
+});
+
+/**
  * TODO:
- *    getCast
- *    getCastsByFid
- *    getCastsByMention
- *    getCastsByParent
  *    getReaction
  *    getReactionsByCast
  *    getReactionsByFid
