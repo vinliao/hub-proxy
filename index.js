@@ -10,6 +10,7 @@ const {
   bytesToUtf8String,
   getSSLHubRpcClient,
   userDataTypeFromJSON,
+  reactionTypeFromJSON,
 } = require("@farcaster/hub-nodejs");
 
 // Load environment variables from .env file
@@ -26,6 +27,8 @@ console.log(`Connecting to ${hubRpcEndpoint}...`);
 app.use(express.json());
 
 const returnResult = (res, result) => {
+  console.log(res.req.originalUrl);
+  console.log(result);
   if (result.isErr()) {
     // not returning 400 because it's not an endpoint params error
     // could be a bad choice...
@@ -540,7 +543,7 @@ app.post("/get-all-cast-messages-by-fid", async (req, res) => {
  * curl --request POST \
  *   --url http://localhost:3000/get-reaction \
  *   --header 'Content-Type: application/json' \
- *   --data '{"fid": 8150, "reactionType": "LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
+ *   --data '{"fid": 8150, "reactionType": "REACTION_TYPE_LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
  */
 app.post("/get-reaction", async (req, res) => {
   const { fid, reactionType, castId } = req.body;
@@ -552,10 +555,14 @@ app.post("/get-reaction", async (req, res) => {
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const hashBytes = hexStringToBytes(castId.hash)._unsafeUnwrap();
   const reactionResult = await client.getReaction({
     fid,
-    reactionType,
-    castId,
+    reactionType: reactionTypeFromJSON(reactionType),
+    castId: {
+      fid: castId.fid,
+      hash: hashBytes,
+    },
   });
 
   returnResult(res, reactionResult);
@@ -570,7 +577,7 @@ app.post("/get-reaction", async (req, res) => {
  * curl --request POST \
  *   --url http://localhost:3000/get-reactions-by-cast \
  *   --header 'Content-Type: application/json' \
- *   --data '{"reactionType": "LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
+ *   --data '{"reactionType": "REACTION_TYPE_LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
  */
 app.post("/get-reactions-by-cast", async (req, res) => {
   const { reactionType, castId } = req.body;
@@ -582,9 +589,10 @@ app.post("/get-reactions-by-cast", async (req, res) => {
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const hashBytes = hexStringToBytes(castId.hash)._unsafeUnwrap();
   const reactionsResult = await client.getReactionsByCast({
-    reactionType,
-    castId,
+    reactionType: reactionTypeFromJSON(reactionType),
+    castId: { fid: castId.fid, hash: hashBytes },
   });
 
   returnResult(res, reactionsResult);
@@ -599,7 +607,7 @@ app.post("/get-reactions-by-cast", async (req, res) => {
  * curl --request POST \
  *   --url http://localhost:3000/get-reactions-by-fid \
  *   --header 'Content-Type: application/json' \
- *   --data '{"fid": 2, "reactionType": "LIKE"}'
+ *   --data '{"fid": 2, "reactionType": "REACTION_TYPE_LIKE"}'
  */
 app.post("/get-reactions-by-fid", async (req, res) => {
   const { fid, reactionType } = req.body;
@@ -611,7 +619,10 @@ app.post("/get-reactions-by-fid", async (req, res) => {
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const reactionsResult = await client.getReactionsByFid({ fid, reactionType });
+  const reactionsResult = await client.getReactionsByFid({
+    fid,
+    reactionType: reactionTypeFromJSON(reactionType),
+  });
 
   returnResult(res, reactionsResult);
 });

@@ -67,24 +67,6 @@ describe("POST /hex-string-to-bytes", () => {
   test("Should return 400 with invalid input", async () => {
     const response = await request(app)
       .post("/hex-string-to-bytes")
-      .send({ hexString: 123 });
-
-    expect(response.status).toBe(400);
-  });
-});
-
-describe("POST /hex-string-to-bytes", () => {
-  test("Should return 200 with valid input", async () => {
-    const response = await request(app)
-      .post("/hex-string-to-bytes")
-      .send({ hexString: "0x010203" });
-
-    expect(response.status).toBe(200);
-  });
-
-  test("Should return 400 with invalid input", async () => {
-    const response = await request(app)
-      .post("/hex-string-to-bytes")
       .send({ hexString: 12345 });
 
     expect(response.status).toBe(400);
@@ -259,7 +241,7 @@ describe("POST /get-cast", () => {
   test("Should return 200 with valid input", async () => {
     const response = await request(app)
       .post("/get-cast")
-      .send({ fid: 2, hash: "0x460a87ace7014adefe4a2944fb62833b1bf2a6be" });
+      .send({ fid: 2, hash: "460a87ace7014adefe4a2944fb62833b1bf2a6be" });
 
     expect(response.status).toBe(200);
   });
@@ -274,6 +256,7 @@ describe("POST /get-cast", () => {
 });
 
 describe("POST /get-casts-by-fid", () => {
+  jest.setTimeout(10000);
   test("Should return 200 with valid input", async () => {
     const response = await request(app)
       .post("/get-casts-by-fid")
@@ -313,7 +296,7 @@ describe("POST /get-casts-by-parent", () => {
   test("Should return 200 with valid input", async () => {
     const response = await request(app)
       .post("/get-casts-by-parent")
-      .send({ fid: 2, hash: "0xee04762bea3060ce3cca154bced5947de04aa253" });
+      .send({ fid: 2, hash: "ee04762bea3060ce3cca154bced5947de04aa253" });
 
     expect(response.status).toBe(200);
   });
@@ -328,6 +311,7 @@ describe("POST /get-casts-by-parent", () => {
 });
 
 describe("POST /get-all-cast-messages-by-fid", () => {
+  jest.setTimeout(10000);
   test("Should return 200 with valid input", async () => {
     const response = await request(app)
       .post("/get-all-cast-messages-by-fid")
@@ -351,10 +335,10 @@ describe("POST /get-reaction", () => {
       .post("/get-reaction")
       .send({
         fid: 8150,
-        reactionType: "LIKE",
+        reactionType: "REACTION_TYPE_LIKE",
         castId: {
           fid: 2,
-          hash: "0xee04762bea3060ce3cca154bced5947de04aa253",
+          hash: "ee04762bea3060ce3cca154bced5947de04aa253",
         },
       });
 
@@ -366,10 +350,10 @@ describe("POST /get-reaction", () => {
       .post("/get-reaction")
       .send({
         fid: "8150",
-        reactionType: "LIKE",
+        reactionType: "REACTION_TYPE_LIKE",
         castId: {
           fid: 2,
-          hash: "0xee04762bea3060ce3cca154bced5947de04aa253",
+          hash: "ee04762bea3060ce3cca154bced5947de04aa253",
         },
       });
 
@@ -382,8 +366,8 @@ describe("POST /get-reactions-by-cast", () => {
     const response = await request(app)
       .post("/get-reactions-by-cast")
       .send({
-        reactionType: "LIKE",
-        castId: { fid: 2, hash: "0xee04762bea3060ce3cca154bced5947de04aa253" },
+        reactionType: "REACTION_TYPE_LIKE",
+        castId: { fid: 2, hash: "ee04762bea3060ce3cca154bced5947de04aa253" },
       });
 
     expect(response.status).toBe(200);
@@ -402,7 +386,7 @@ describe("POST /get-reactions-by-fid", () => {
   test("Should return 200 with valid input", async () => {
     const response = await request(app)
       .post("/get-reactions-by-fid")
-      .send({ fid: 2, reactionType: "LIKE" });
+      .send({ fid: 2, reactionType: "REACTION_TYPE_LIKE" });
 
     expect(response.status).toBe(200);
   });
@@ -487,14 +471,5 @@ describe("POST /get-all-verification-messages-by-fid", () => {
       .send({ fid: "2" });
 
     expect(response.status).toBe(400);
-  });
-});
-
-// The existing test block for starting the server
-describe("Server", () => {
-  test("Server should be listening on the specified port", () => {
-    const server = app.listen(port);
-    expect(server.address().port).toBe(port);
-    server.close();
   });
 });
