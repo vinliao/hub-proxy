@@ -20,10 +20,12 @@ app.use(express.json());
 
 const returnResult = (res, result) => {
   if (result.isErr()) {
-    res.status(400).json({ error: result._unsafeUnwrapErr() });
+    // not returning 400 because it's not an endpoint params error
+    // could be a bad choice...
+    res.json({ error: result._unsafeUnwrapErr() });
+  } else {
+    res.json({ result: result.value });
   }
-
-  res.json({ result: result.value });
 };
 
 // Define a route for the home page
@@ -98,13 +100,14 @@ app.post("/from-farcaster-time", (req, res) => {
  *   }'
  */
 app.post("/bytes-to-hex-string", (req, res) => {
-  const byteArray = new Uint8Array(req.body.byteArray);
-  if (!(byteArray instanceof Uint8Array)) {
+  const input = req.body.byteArray;
+  if (!Array.isArray(input) || !input.every(Number.isInteger)) {
     return res
       .status(400)
-      .json({ error: "Invalid input. Expected a Uint8Array." });
+      .json({ error: "Invalid input. Expected an array of numbers." });
   }
 
+  const byteArray = new Uint8Array(input);
   returnResult(res, bytesToHexString(byteArray));
 });
 
@@ -142,13 +145,14 @@ app.post("/hex-string-to-bytes", (req, res) => {
  *   }'
  */
 app.post("/bytes-to-utf8-string", (req, res) => {
-  const byteArray = new Uint8Array(req.body.byteArray);
-  if (!(byteArray instanceof Uint8Array)) {
+  const input = req.body.byteArray;
+  if (!Array.isArray(input) || !input.every(Number.isInteger)) {
     return res
       .status(400)
-      .json({ error: "Invalid input. Expected a Uint8Array." });
+      .json({ error: "Invalid input. Expected an array of numbers." });
   }
 
+  const byteArray = new Uint8Array(input);
   returnResult(res, bytesToUtf8String(byteArray));
 });
 
@@ -713,3 +717,5 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}.`);
 });
+
+module.exports = app;
