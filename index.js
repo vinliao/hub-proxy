@@ -1,5 +1,6 @@
 // Require the Express module
 const express = require("express");
+const dotenv = require("dotenv");
 const {
   getFarcasterTime,
   toFarcasterTime,
@@ -11,9 +12,15 @@ const {
   userDataTypeFromJSON,
 } = require("@farcaster/hub-nodejs");
 
+// Load environment variables from .env file
+dotenv.config();
+
 // Create an instance of the Express application
 const app = express();
-const hubRpcEndpoint = "testnet1.farcaster.xyz:2283";
+const hubRpcEndpoint =
+  process.env.MAINNET_HUB_RPC_URL || "testnet1.farcaster.xyz:2283";
+
+console.log(`Connecting to ${hubRpcEndpoint}...`);
 
 // Use JSON middleware
 app.use(express.json());
