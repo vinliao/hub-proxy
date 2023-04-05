@@ -18,6 +18,14 @@ const hubRpcEndpoint = "testnet1.farcaster.xyz:2283";
 // Use JSON middleware
 app.use(express.json());
 
+const returnResult = (res, result) => {
+  if (result.isErr()) {
+    res.status(400).json({ error: result._unsafeUnwrapErr() });
+  }
+
+  res.json({ result: result.value });
+};
+
 // Define a route for the home page
 app.get("/", (req, res) => {
   res.json({ message: "hello world" });
@@ -53,13 +61,7 @@ app.post("/to-farcaster-time", (req, res) => {
     return res.status(400).json({ error: "Invalid input. Expected a number." });
   }
 
-  const result = toFarcasterTime(msTimestamp);
-
-  if (result.isErr()) {
-    res.status(400).json({ error: result._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: result.value });
+  returnResult(res, toFarcasterTime(msTimestamp));
 });
 
 /**
@@ -80,13 +82,7 @@ app.post("/from-farcaster-time", (req, res) => {
     return res.status(400).json({ error: "Invalid input. Expected a number." });
   }
 
-  const result = fromFarcasterTime(farcasterTimestamp);
-
-  if (result.isErr()) {
-    res.status(400).json({ error: result._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: result.value });
+  returnResult(res, fromFarcasterTime(farcasterTimestamp));
 });
 
 /**
@@ -109,13 +105,7 @@ app.post("/bytes-to-hex-string", (req, res) => {
       .json({ error: "Invalid input. Expected a Uint8Array." });
   }
 
-  const result = bytesToHexString(byteArray);
-
-  if (result.isErr()) {
-    res.status(400).json({ error: result._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: result.value });
+  returnResult(res, bytesToHexString(byteArray));
 });
 
 /**
@@ -136,13 +126,7 @@ app.post("/hex-string-to-bytes", (req, res) => {
     return res.status(400).json({ error: "Invalid input. Expected a string." });
   }
 
-  const result = hexStringToBytes(hexString);
-
-  if (result.isErr()) {
-    res.status(400).json({ error: result._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: result.value });
+  returnResult(res, hexStringToBytes(hexString));
 });
 
 /**
@@ -165,13 +149,7 @@ app.post("/bytes-to-utf8-string", (req, res) => {
       .json({ error: "Invalid input. Expected a Uint8Array." });
   }
 
-  const result = bytesToUtf8String(byteArray);
-
-  if (result.isErr()) {
-    res.status(400).json({ error: result._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: result.value });
+  returnResult(res, bytesToUtf8String(byteArray));
 });
 
 /**
@@ -189,10 +167,8 @@ app.post("/bytes-to-utf8-string", (req, res) => {
  *   }'
  */
 app.post("/get-signer", async (req, res) => {
-  if (
-    typeof req.body.fid !== "number" ||
-    typeof req.body.signerPubKeyHex !== "string"
-  ) {
+  const { fid, signerPubKeyHex } = req.body;
+  if (typeof fid !== "number" || typeof signerPubKeyHex !== "string") {
     return res.status(400).json({
       error:
         "Invalid input. Expected a number for fid and a string for signerPubKeyHex.",
@@ -200,17 +176,12 @@ app.post("/get-signer", async (req, res) => {
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid, signerPubKeyHex } = req.body;
   const signerResult = await client.getSigner({
     fid,
     signer: hexStringToBytes(signerPubKeyHex)._unsafeUnwrap(),
   });
 
-  if (signerResult.isErr()) {
-    return res.status(400).json({ error: signerResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: signerResult.value });
+  returnResult(res, signerResult);
 });
 
 /**
@@ -224,22 +195,17 @@ app.post("/get-signer", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-signers-by-fid", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
+  const fid = req.body.fid;
+  if (typeof fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const signersResult = await client.getAllSignerMessagesByFid({
-    fid: req.body.fid,
-  });
+  const signersResult = await client.getAllSignerMessagesByFid({ fid });
 
-  if (signersResult.isErr()) {
-    return res.status(400).json({ error: signersResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: signersResult.value });
+  returnResult(res, signersResult);
 });
 
 /**
@@ -253,22 +219,17 @@ app.post("/get-signers-by-fid", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-all-signer-messages-by-fid", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
+  const fid = req.body.fid;
+  if (typeof fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const signersResult = await client.getAllSignerMessagesByFid({
-    fid: req.body.fid,
-  });
+  const signersResult = await client.getAllSignerMessagesByFid({ fid });
 
-  if (signersResult.isErr()) {
-    return res.status(400).json({ error: signersResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: signersResult.value });
+  returnResult(res, signersResult);
 });
 
 /**
@@ -286,10 +247,8 @@ app.post("/get-all-signer-messages-by-fid", async (req, res) => {
  *   }'
  */
 app.post("/get-user-data", async (req, res) => {
-  if (
-    typeof req.body.fid !== "number" ||
-    typeof req.body.userDataType !== "string"
-  ) {
+  const { fid, userDataType } = req.body;
+  if (typeof fid !== "number" || typeof userDataType !== "string") {
     return res.status(400).json({
       error:
         "Invalid input. Expected a number for fid and a string for userDataType.",
@@ -297,18 +256,12 @@ app.post("/get-user-data", async (req, res) => {
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid } = req.body;
-
   const userDataResult = await client.getUserData({
     fid,
-    userDataType: userDataTypeFromJSON(req.body.userDataType),
+    userDataType: userDataTypeFromJSON(userDataType),
   });
 
-  if (userDataResult.isErr()) {
-    return res.status(400).json({ error: userDataResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: userDataResult.value });
+  returnResult(res, userDataResult);
 });
 
 /**
@@ -322,21 +275,16 @@ app.post("/get-user-data", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-user-data-by-fid", async (req, res) => {
+  const fid = req.body.fid;
   if (typeof req.body.fid !== "number") {
     return res.status(400).json({
       error: "Invalid input. Expected a number for fid.",
     });
   }
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid } = req.body;
-
   const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
 
-  if (userDataResult.isErr()) {
-    return res.status(400).json({ error: userDataResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: userDataResult.value });
+  returnResult(res, userDataResult);
 });
 
 /**
@@ -350,21 +298,17 @@ app.post("/get-user-data-by-fid", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-all-user-data-messages-by-fid", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
+  const fid = req.body.fid;
+  if (typeof fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid } = req.body;
-
   const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
-  if (userDataResult.isErr()) {
-    return res.status(400).json({ error: userDataResult._unsafeUnwrapErr() });
-  }
 
-  res.json({ result: userDataResult.value });
+  returnResult(res, userDataResult);
 });
 
 /**
@@ -378,21 +322,17 @@ app.post("/get-all-user-data-messages-by-fid", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-id-registry-event", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
+  const { fid } = req.body;
+  if (typeof fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid } = req.body;
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
   const idResult = await client.getIdRegistryEvent({ fid });
 
-  if (idResult.isErr()) {
-    return res.status(400).json({ error: idResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: idResult.value });
+  returnResult(res, idResult);
 });
 
 /**
@@ -406,22 +346,18 @@ app.post("/get-id-registry-event", async (req, res) => {
  *   --data '{"fname": "v"}'
  */
 app.post("/get-name-registry-event", async (req, res) => {
-  if (typeof req.body.fname !== "string") {
+  const { fname } = req.body;
+  if (typeof fname !== "string") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a string for fname." });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fname } = req.body;
-  const fnameBytes = new TextEncoder().encode(fname);
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const fnameBytes = new TextEncoder().encode(fname);
   const fnameResult = await client.getNameRegistryEvent({ name: fnameBytes });
 
-  if (fnameResult.isErr()) {
-    return res.status(400).json({ error: fnameResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: fnameResult.value });
+  returnResult(res, fnameResult);
 });
 
 /**
@@ -436,22 +372,18 @@ app.post("/get-name-registry-event", async (req, res) => {
  *   --data '{"fid": 2, "hash": "460a87ace7014adefe4a2944fb62833b1bf2a6be"}'
  */
 app.post("/get-cast", async (req, res) => {
-  if (typeof req.body.fid !== "number" || typeof req.body.hash !== "string") {
+  const { fid, hash } = req.body;
+  if (typeof fid !== "number" || typeof hash !== "string") {
     return res.status(400).json({
       error: "Invalid input. Expected a number for fid and a string for hash.",
     });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid, hash } = req.body;
-  const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
   const castResult = await client.getCast({ fid, hash: castHashBytes });
 
-  if (castResult.isErr()) {
-    return res.status(400).json({ error: castResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: castResult.value });
+  returnResult(res, castResult);
 });
 
 /**
@@ -468,14 +400,15 @@ app.post("/get-cast", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-casts-by-fid", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
+  const { fid, pageSize, pageToken, reverse } = req.body;
+  // TODO: additional checks here
+  if (typeof fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid, pageSize, pageToken, reverse } = req.body;
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
   const castsResult = await client.getCastsByFid({
     fid,
     pageSize,
@@ -483,11 +416,7 @@ app.post("/get-casts-by-fid", async (req, res) => {
     reverse,
   });
 
-  if (castsResult.isErr()) {
-    return res.status(400).json({ error: castsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: castsResult.value });
+  returnResult(res, castsResult);
 });
 
 /**
@@ -504,14 +433,15 @@ app.post("/get-casts-by-fid", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-casts-by-mention", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
+  const { fid, pageSize, pageToken, reverse } = req.body;
+  // TODO: additional checks here
+  if (typeof fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid, pageSize, pageToken, reverse } = req.body;
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
   const castsResult = await client.getCastsByMention({
     fid,
     pageSize,
@@ -519,11 +449,7 @@ app.post("/get-casts-by-mention", async (req, res) => {
     reverse,
   });
 
-  if (castsResult.isErr()) {
-    return res.status(400).json({ error: castsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: castsResult.value });
+  returnResult(res, castsResult);
 });
 
 /**
@@ -541,15 +467,16 @@ app.post("/get-casts-by-mention", async (req, res) => {
  *   --data '{"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}'
  */
 app.post("/get-casts-by-parent", async (req, res) => {
-  if (typeof req.body.fid !== "number" || typeof req.body.hash !== "string") {
+  const { fid, hash, pageSize, pageToken, reverse } = req.body;
+  // TODO: additional checks here
+  if (typeof fid !== "number" || typeof hash !== "string") {
     return res.status(400).json({
       error: "Invalid input. Expected a number for fid and a string for hash.",
     });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid, hash, pageSize, pageToken, reverse } = req.body;
-  const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
   const castsResult = await client.getCastsByParent({
     castId: { fid, hash: castHashBytes },
     pageSize,
@@ -557,11 +484,7 @@ app.post("/get-casts-by-parent", async (req, res) => {
     reverse,
   });
 
-  if (castsResult.isErr()) {
-    return res.status(400).json({ error: castsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: castsResult.value });
+  returnResult(res, castsResult);
 });
 
 /**
@@ -578,14 +501,14 @@ app.post("/get-casts-by-parent", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-all-cast-messages-by-fid", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
+  const { fid, pageSize, pageToken, reverse } = req.body;
+  if (typeof fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const { fid, pageSize, pageToken, reverse } = req.body;
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
   const castsResult = await client.getAllCastMessagesByFid({
     fid,
     pageSize,
@@ -593,11 +516,7 @@ app.post("/get-all-cast-messages-by-fid", async (req, res) => {
     reverse,
   });
 
-  if (castsResult.isErr()) {
-    return res.status(400).json({ error: castsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: castsResult.value });
+  returnResult(res, castsResult);
 });
 
 /**
@@ -613,25 +532,22 @@ app.post("/get-all-cast-messages-by-fid", async (req, res) => {
  *   --data '{"fid": 8150, "reactionType": "LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
  */
 app.post("/get-reaction", async (req, res) => {
+  const { fid, reactionType, castId } = req.body;
+  // TODO: additional checks here
   if (typeof req.body.fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
-  const { fid, reactionType, castId } = req.body;
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
   const reactionResult = await client.getReaction({
     fid,
     reactionType,
     castId,
   });
 
-  if (reactionResult.isErr()) {
-    return res.status(400).json({ error: reactionResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: reactionResult.value });
+  returnResult(res, reactionResult);
 });
 
 /**
@@ -647,18 +563,20 @@ app.post("/get-reaction", async (req, res) => {
  */
 app.post("/get-reactions-by-cast", async (req, res) => {
   const { reactionType, castId } = req.body;
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  // TODO: additional checks here
+  if (typeof reactionType !== "string") {
+    return res
+      .status(400)
+      .json({ error: "Invalid input. Expected a string for reactionType." });
+  }
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
   const reactionsResult = await client.getReactionsByCast({
     reactionType,
     castId,
   });
 
-  if (reactionsResult.isErr()) {
-    return res.status(400).json({ error: reactionsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: reactionsResult.value });
+  returnResult(res, reactionsResult);
 });
 
 /**
@@ -673,21 +591,18 @@ app.post("/get-reactions-by-cast", async (req, res) => {
  *   --data '{"fid": 2, "reactionType": "LIKE"}'
  */
 app.post("/get-reactions-by-fid", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
-  }
   const { fid, reactionType } = req.body;
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
+  if (typeof fid !== "number" && typeof reactionType !== "string") {
+    return res.status(400).json({
+      error:
+        "Invalid input. Expected a number for fid and a string for reactionType.",
+    });
+  }
 
+  const client = getSSLHubRpcClient(hubRpcEndpoint);
   const reactionsResult = await client.getReactionsByFid({ fid, reactionType });
 
-  if (reactionsResult.isErr()) {
-    return res.status(400).json({ error: reactionsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: reactionsResult.value });
+  returnResult(res, reactionsResult);
 });
 
 /**
@@ -701,21 +616,16 @@ app.post("/get-reactions-by-fid", async (req, res) => {
  *   --data '{"fid": 2}'
  */
 app.post("/get-all-reaction-messages-by-fid", async (req, res) => {
-  if (typeof req.body.fid !== "number") {
+  const fid = req.body.fid;
+  if (typeof fid !== "number") {
     return res
       .status(400)
       .json({ error: "Invalid input. Expected a number for fid." });
   }
-  const { fid } = req.body;
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-
   const reactionsResult = await client.getAllReactionMessagesByFid({ fid });
 
-  if (reactionsResult.isErr()) {
-    return res.status(400).json({ error: reactionsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: reactionsResult.value });
+  returnResult(res, reactionsResult);
 });
 
 /**
@@ -731,7 +641,6 @@ app.post("/get-all-reaction-messages-by-fid", async (req, res) => {
  */
 app.post("/get-verification", async (req, res) => {
   const { fid, address } = req.body;
-
   if (typeof fid !== "number" || typeof address !== "string") {
     return res.status(400).json({
       error:
@@ -741,19 +650,12 @@ app.post("/get-verification", async (req, res) => {
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
   const addressBytes = hexStringToBytes(address)._unsafeUnwrap();
-
   const verificationResult = await client.getVerification({
     fid,
     address: addressBytes,
   });
 
-  if (verificationResult.isErr()) {
-    return res
-      .status(400)
-      .json({ error: verificationResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: verificationResult.value });
+  returnResult(res, verificationResult);
 });
 
 /**
@@ -768,7 +670,6 @@ app.post("/get-verification", async (req, res) => {
  */
 app.post("/get-verifications-by-fid", async (req, res) => {
   const { fid } = req.body;
-
   if (typeof fid !== "number") {
     return res
       .status(400)
@@ -776,16 +677,9 @@ app.post("/get-verifications-by-fid", async (req, res) => {
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-
   const verificationsResult = await client.getVerificationsByFid({ fid });
 
-  if (verificationsResult.isErr()) {
-    return res
-      .status(400)
-      .json({ error: verificationsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: verificationsResult.value });
+  returnResult(res, verificationsResult);
 });
 
 /**
@@ -800,7 +694,6 @@ app.post("/get-verifications-by-fid", async (req, res) => {
  */
 app.post("/get-all-verification-messages-by-fid", async (req, res) => {
   const { fid } = req.body;
-
   if (typeof fid !== "number") {
     return res
       .status(400)
@@ -808,18 +701,11 @@ app.post("/get-all-verification-messages-by-fid", async (req, res) => {
   }
 
   const client = getSSLHubRpcClient(hubRpcEndpoint);
-
   const verificationsResult = await client.getAllVerificationMessagesByFid({
     fid,
   });
 
-  if (verificationsResult.isErr()) {
-    return res
-      .status(400)
-      .json({ error: verificationsResult._unsafeUnwrapErr() });
-  }
-
-  res.json({ result: verificationsResult.value });
+  returnResult(res, verificationsResult);
 });
 
 // Start the server
