@@ -19,11 +19,12 @@ const isHexString = (data, key) => {
 
   if (
     typeof hexString !== "string" ||
-    !/^[0-9a-fA-F]+$/.test(cleanedHexString)
+    !/^[0-9a-fA-F]+$/.test(cleanedHexString) ||
+    cleanedHexString.length % 2 !== 0
   ) {
     return {
       isValid: false,
-      error: `Invalid input. Expected a hex string for ${key}.`,
+      error: `Invalid input. Expected a hex string with an even number of characters for ${key}.`,
     };
   }
 
