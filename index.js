@@ -17,6 +17,7 @@ const {
   isHexString,
   isString,
   isByteArray,
+  isCastId,
 } = require("./validators");
 
 // Load environment variables from .env file
@@ -87,14 +88,14 @@ app.get("/get-farcaster-time", (req, res) => {
  *     "msTimestamp": 1649133661000
  *   }'
  */
-app.post("/to-farcaster-time", (req, res) => {
-  const msTimestamp = req.body.msTimestamp;
-  if (typeof msTimestamp !== "number") {
-    return res.status(400).json({ error: "Invalid input. Expected a number." });
+app.post(
+  "/to-farcaster-time",
+  validationMiddleware({ msTimestamp: isNumber }),
+  (req, res) => {
+    const msTimestamp = req.body.msTimestamp;
+    returnResult(res, toFarcasterTime(msTimestamp));
   }
-
-  returnResult(res, toFarcasterTime(msTimestamp));
-});
+);
 
 /**
  * Convert a Farcaster timestamp to a Unix timestamp.
@@ -108,14 +109,14 @@ app.post("/to-farcaster-time", (req, res) => {
  *     "farcasterTimestamp": 70160902
  *   }'
  */
-app.post("/from-farcaster-time", (req, res) => {
-  const farcasterTimestamp = req.body.farcasterTimestamp;
-  if (typeof farcasterTimestamp !== "number") {
-    return res.status(400).json({ error: "Invalid input. Expected a number." });
+app.post(
+  "/from-farcaster-time",
+  validationMiddleware({ farcasterTimestamp: isNumber }),
+  (req, res) => {
+    const farcasterTimestamp = req.body.farcasterTimestamp;
+    returnResult(res, fromFarcasterTime(farcasterTimestamp));
   }
-
-  returnResult(res, fromFarcasterTime(farcasterTimestamp));
-});
+);
 
 /**
  * Convert a byte array to a hex string.
@@ -129,17 +130,15 @@ app.post("/from-farcaster-time", (req, res) => {
  *     "byteArray": [1, 2, 3]
  *   }'
  */
-app.post("/bytes-to-hex-string", (req, res) => {
-  const input = req.body.byteArray;
-  if (!Array.isArray(input) || !input.every(Number.isInteger)) {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected an array of numbers." });
+app.post(
+  "/bytes-to-hex-string",
+  validationMiddleware({ byteArray: isByteArray }),
+  (req, res) => {
+    const input = req.body.byteArray;
+    const byteArray = new Uint8Array(input);
+    returnResult(res, bytesToHexString(byteArray));
   }
-
-  const byteArray = new Uint8Array(input);
-  returnResult(res, bytesToHexString(byteArray));
-});
+);
 
 /**
  * Convert a hex string to a byte array.
@@ -153,14 +152,14 @@ app.post("/bytes-to-hex-string", (req, res) => {
  *     "hexString": "0x010203"
  *   }'
  */
-app.post("/hex-string-to-bytes", (req, res) => {
-  const hexString = req.body.hexString;
-  if (typeof hexString !== "string") {
-    return res.status(400).json({ error: "Invalid input. Expected a string." });
+app.post(
+  "/hex-string-to-bytes",
+  validationMiddleware({ hexString: isString }),
+  (req, res) => {
+    const hexString = req.body.hexString;
+    returnResult(res, hexStringToBytes(hexString));
   }
-
-  returnResult(res, hexStringToBytes(hexString));
-});
+);
 
 /**
  * Convert a byte array to a UTF-8 string.
@@ -174,17 +173,15 @@ app.post("/hex-string-to-bytes", (req, res) => {
  *     "byteArray": [72, 101, 108, 108, 111]
  *   }'
  */
-app.post("/bytes-to-utf8-string", (req, res) => {
-  const input = req.body.byteArray;
-  if (!Array.isArray(input) || !input.every(Number.isInteger)) {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected an array of numbers." });
+app.post(
+  "/bytes-to-utf8-string",
+  validationMiddleware({ byteArray: isByteArray }),
+  (req, res) => {
+    const input = req.body.byteArray;
+    const byteArray = new Uint8Array(input);
+    returnResult(res, bytesToUtf8String(byteArray));
   }
-
-  const byteArray = new Uint8Array(input);
-  returnResult(res, bytesToUtf8String(byteArray));
-});
+);
 
 /**
  * Get an active signer message for a given fid and signer's public key.
@@ -200,23 +197,20 @@ app.post("/bytes-to-utf8-string", (req, res) => {
  *     "signerPubKeyHex": "5feb9e21f3df044197e634e3602a594a3423c71c6f208876074dc5a3e0d7b9ce"
  *   }'
  */
-app.post("/get-signer", async (req, res) => {
-  const { fid, signerPubKeyHex } = req.body;
-  if (typeof fid !== "number" || typeof signerPubKeyHex !== "string") {
-    return res.status(400).json({
-      error:
-        "Invalid input. Expected a number for fid and a string for signerPubKeyHex.",
+app.post(
+  "/get-signer",
+  validationMiddleware({ fid: isNumber, signerPubKeyHex: isHexString }),
+  async (req, res) => {
+    const { fid, signerPubKeyHex } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const signerResult = await client.getSigner({
+      fid,
+      signer: hexStringToBytes(signerPubKeyHex)._unsafeUnwrap(),
     });
+
+    returnResult(res, signerResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const signerResult = await client.getSigner({
-    fid,
-    signer: hexStringToBytes(signerPubKeyHex)._unsafeUnwrap(),
-  });
-
-  returnResult(res, signerResult);
-});
+);
 
 /**
  * Get all active signers created by a given fid in reverse chronological order.
@@ -228,19 +222,17 @@ app.post("/get-signer", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-signers-by-fid", async (req, res) => {
-  const fid = req.body.fid;
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-signers-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const fid = req.body.fid;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const signersResult = await client.getAllSignerMessagesByFid({ fid });
+
+    returnResult(res, signersResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const signersResult = await client.getAllSignerMessagesByFid({ fid });
-
-  returnResult(res, signersResult);
-});
+);
 
 /**
  * Get all active and inactive signers created by a given fid in reverse chronological order.
@@ -252,19 +244,17 @@ app.post("/get-signers-by-fid", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-all-signer-messages-by-fid", async (req, res) => {
-  const fid = req.body.fid;
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-all-signer-messages-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const fid = req.body.fid;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const signersResult = await client.getAllSignerMessagesByFid({ fid });
+
+    returnResult(res, signersResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const signersResult = await client.getAllSignerMessagesByFid({ fid });
-
-  returnResult(res, signersResult);
-});
+);
 
 /**
  * Get a specific piece of metadata about the user.
@@ -280,23 +270,20 @@ app.post("/get-all-signer-messages-by-fid", async (req, res) => {
  *     "userDataType": "USER_DATA_TYPE_DISPLAY"
  *   }'
  */
-app.post("/get-user-data", async (req, res) => {
-  const { fid, userDataType } = req.body;
-  if (typeof fid !== "number" || typeof userDataType !== "string") {
-    return res.status(400).json({
-      error:
-        "Invalid input. Expected a number for fid and a string for userDataType.",
+app.post(
+  "/get-user-data",
+  validationMiddleware({ fid: isNumber, userDataType: isString }),
+  async (req, res) => {
+    const { fid, userDataType } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const userDataResult = await client.getUserData({
+      fid,
+      userDataType: userDataTypeFromJSON(userDataType),
     });
+
+    returnResult(res, userDataResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const userDataResult = await client.getUserData({
-    fid,
-    userDataType: userDataTypeFromJSON(userDataType),
-  });
-
-  returnResult(res, userDataResult);
-});
+);
 
 /**
  * Get all metadata about a user by their fid.
@@ -308,18 +295,17 @@ app.post("/get-user-data", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-user-data-by-fid", async (req, res) => {
-  const fid = req.body.fid;
-  if (typeof req.body.fid !== "number") {
-    return res.status(400).json({
-      error: "Invalid input. Expected a number for fid.",
-    });
-  }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
+app.post(
+  "/get-user-data-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const fid = req.body.fid;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
 
-  returnResult(res, userDataResult);
-});
+    returnResult(res, userDataResult);
+  }
+);
 
 /**
  * Get all metadata about a user by their fid (alias for getUserDataByFid).
@@ -331,19 +317,17 @@ app.post("/get-user-data-by-fid", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-all-user-data-messages-by-fid", async (req, res) => {
-  const fid = req.body.fid;
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-all-user-data-messages-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const fid = req.body.fid;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
+
+    returnResult(res, userDataResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
-
-  returnResult(res, userDataResult);
-});
+);
 
 /**
  * Get the on-chain event most recently associated with changing an fid's ownership.
@@ -355,19 +339,17 @@ app.post("/get-all-user-data-messages-by-fid", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-id-registry-event", async (req, res) => {
-  const { fid } = req.body;
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-id-registry-event",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const { fid } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const idResult = await client.getIdRegistryEvent({ fid });
+
+    returnResult(res, idResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const idResult = await client.getIdRegistryEvent({ fid });
-
-  returnResult(res, idResult);
-});
+);
 
 /**
  * Get the on-chain event most recently associated with changing an fname's ownership.
@@ -379,20 +361,18 @@ app.post("/get-id-registry-event", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fname": "v"}'
  */
-app.post("/get-name-registry-event", async (req, res) => {
-  const { fname } = req.body;
-  if (typeof fname !== "string") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a string for fname." });
+app.post(
+  "/get-name-registry-event",
+  validationMiddleware({ fname: isString }),
+  async (req, res) => {
+    const { fname } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const fnameBytes = new TextEncoder().encode(fname);
+    const fnameResult = await client.getNameRegistryEvent({ name: fnameBytes });
+
+    returnResult(res, fnameResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const fnameBytes = new TextEncoder().encode(fname);
-  const fnameResult = await client.getNameRegistryEvent({ name: fnameBytes });
-
-  returnResult(res, fnameResult);
-});
+);
 
 /**
  * Get an active cast for a user.
@@ -405,20 +385,18 @@ app.post("/get-name-registry-event", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2, "hash": "460a87ace7014adefe4a2944fb62833b1bf2a6be"}'
  */
-app.post("/get-cast", async (req, res) => {
-  const { fid, hash } = req.body;
-  if (typeof fid !== "number" || typeof hash !== "string") {
-    return res.status(400).json({
-      error: "Invalid input. Expected a number for fid and a string for hash.",
-    });
+app.post(
+  "/get-cast",
+  validationMiddleware({ fid: isNumber, hash: isHexString }),
+  async (req, res) => {
+    const { fid, hash } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
+    const castResult = await client.getCast({ fid, hash: castHashBytes });
+
+    returnResult(res, castResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
-  const castResult = await client.getCast({ fid, hash: castHashBytes });
-
-  returnResult(res, castResult);
-});
+);
 
 /**
  * Get active casts for a user in reverse chronological order.
@@ -433,25 +411,23 @@ app.post("/get-cast", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-casts-by-fid", async (req, res) => {
-  const { fid, pageSize, pageToken, reverse } = req.body;
-  // TODO: additional checks here
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-casts-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    // TODO: validate other params
+    const { fid, pageSize, pageToken, reverse } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const castsResult = await client.getCastsByFid({
+      fid,
+      pageSize,
+      pageToken,
+      reverse,
+    });
+
+    returnResult(res, castsResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const castsResult = await client.getCastsByFid({
-    fid,
-    pageSize,
-    pageToken,
-    reverse,
-  });
-
-  returnResult(res, castsResult);
-});
+);
 
 /**
  * Get all active casts that mention an fid in reverse chronological order.
@@ -466,25 +442,23 @@ app.post("/get-casts-by-fid", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-casts-by-mention", async (req, res) => {
-  const { fid, pageSize, pageToken, reverse } = req.body;
-  // TODO: additional checks here
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-casts-by-mention",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    // TODO: validate other params
+    const { fid, pageSize, pageToken, reverse } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const castsResult = await client.getCastsByMention({
+      fid,
+      pageSize,
+      pageToken,
+      reverse,
+    });
+
+    returnResult(res, castsResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const castsResult = await client.getCastsByMention({
-    fid,
-    pageSize,
-    pageToken,
-    reverse,
-  });
-
-  returnResult(res, castsResult);
-});
+);
 
 /**
  * Get all active casts that are replies to a specific cast in reverse chronological order.
@@ -502,12 +476,9 @@ app.post("/get-casts-by-mention", async (req, res) => {
  */
 app.post(
   "/get-casts-by-parent",
-  validationMiddleware({
-    // TODO: additional checks for pageSize, pageToken, and reverse
-    fid: isNumber,
-    hash: isHexString,
-  }),
+  validationMiddleware({ fid: isNumber, hash: isHexString }),
   async (req, res) => {
+    // TODO: additional checks for pageSize, pageToken, and reverse
     const { fid, hash, pageSize, pageToken, reverse } = req.body;
     const client = getSSLHubRpcClient(hubRpcEndpoint);
     const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
@@ -539,13 +510,8 @@ app.post(
   "/get-all-cast-messages-by-fid",
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
+    // TODO: validate other params
     const { fid, pageSize, pageToken, reverse } = req.body;
-    if (typeof fid !== "number") {
-      return res
-        .status(400)
-        .json({ error: "Invalid input. Expected a number for fid." });
-    }
-
     const client = getSSLHubRpcClient(hubRpcEndpoint);
     const castsResult = await client.getAllCastMessagesByFid({
       fid,
@@ -570,28 +536,29 @@ app.post(
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 8150, "reactionType": "REACTION_TYPE_LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
  */
-app.post("/get-reaction", async (req, res) => {
-  const { fid, reactionType, castId } = req.body;
-  // TODO: additional checks here
-  if (typeof req.body.fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-reaction",
+  validationMiddleware({
+    fid: isNumber,
+    reactionType: isString,
+    castId: isCastId,
+  }),
+  async (req, res) => {
+    const { fid, reactionType, castId } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const hashBytes = hexStringToBytes(castId.hash)._unsafeUnwrap();
+    const reactionResult = await client.getReaction({
+      fid,
+      reactionType: reactionTypeFromJSON(reactionType),
+      castId: {
+        fid: castId.fid,
+        hash: hashBytes,
+      },
+    });
+
+    returnResult(res, reactionResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const hashBytes = hexStringToBytes(castId.hash)._unsafeUnwrap();
-  const reactionResult = await client.getReaction({
-    fid,
-    reactionType: reactionTypeFromJSON(reactionType),
-    castId: {
-      fid: castId.fid,
-      hash: hashBytes,
-    },
-  });
-
-  returnResult(res, reactionResult);
-});
+);
 
 /**
  * Get all active reactions made by users to a cast.
@@ -604,24 +571,24 @@ app.post("/get-reaction", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"reactionType": "REACTION_TYPE_LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
  */
-app.post("/get-reactions-by-cast", async (req, res) => {
-  const { reactionType, castId } = req.body;
-  // TODO: additional checks here
-  if (typeof reactionType !== "string") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a string for reactionType." });
+app.post(
+  "/get-reactions-by-cast",
+  validationMiddleware({
+    reactionType: isString,
+    castId: isCastId,
+  }),
+  async (req, res) => {
+    const { reactionType, castId } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const hashBytes = hexStringToBytes(castId.hash)._unsafeUnwrap();
+    const reactionsResult = await client.getReactionsByCast({
+      reactionType: reactionTypeFromJSON(reactionType),
+      castId: { fid: castId.fid, hash: hashBytes },
+    });
+
+    returnResult(res, reactionsResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const hashBytes = hexStringToBytes(castId.hash)._unsafeUnwrap();
-  const reactionsResult = await client.getReactionsByCast({
-    reactionType: reactionTypeFromJSON(reactionType),
-    castId: { fid: castId.fid, hash: hashBytes },
-  });
-
-  returnResult(res, reactionsResult);
-});
+);
 
 /**
  * Get all active reactions made by a user in reverse chronological order.
@@ -634,23 +601,20 @@ app.post("/get-reactions-by-cast", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2, "reactionType": "REACTION_TYPE_LIKE"}'
  */
-app.post("/get-reactions-by-fid", async (req, res) => {
-  const { fid, reactionType } = req.body;
-  if (typeof fid !== "number" && typeof reactionType !== "string") {
-    return res.status(400).json({
-      error:
-        "Invalid input. Expected a number for fid and a string for reactionType.",
+app.post(
+  "/get-reactions-by-fid",
+  validationMiddleware({ fid: isNumber, reactionType: isString }),
+  async (req, res) => {
+    const { fid, reactionType } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const reactionsResult = await client.getReactionsByFid({
+      fid,
+      reactionType: reactionTypeFromJSON(reactionType),
     });
+
+    returnResult(res, reactionsResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const reactionsResult = await client.getReactionsByFid({
-    fid,
-    reactionType: reactionTypeFromJSON(reactionType),
-  });
-
-  returnResult(res, reactionsResult);
-});
+);
 
 /**
  * Get all active and inactive reactions made by a user in reverse chronological order.
@@ -662,18 +626,17 @@ app.post("/get-reactions-by-fid", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-all-reaction-messages-by-fid", async (req, res) => {
-  const fid = req.body.fid;
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
-  }
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const reactionsResult = await client.getAllReactionMessagesByFid({ fid });
+app.post(
+  "/get-all-reaction-messages-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const fid = req.body.fid;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const reactionsResult = await client.getAllReactionMessagesByFid({ fid });
 
-  returnResult(res, reactionsResult);
-});
+    returnResult(res, reactionsResult);
+  }
+);
 
 /**
  * Returns an active verification for a specific Ethereum address made by a user.
@@ -686,24 +649,21 @@ app.post("/get-all-reaction-messages-by-fid", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2, "address": "0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5"}'
  */
-app.post("/get-verification", async (req, res) => {
-  const { fid, address } = req.body;
-  if (typeof fid !== "number" || typeof address !== "string") {
-    return res.status(400).json({
-      error:
-        "Invalid input. Expected a number for fid and a string for address.",
+app.post(
+  "/get-verification",
+  validationMiddleware({ fid: isNumber, address: isHexString }),
+  async (req, res) => {
+    const { fid, address } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const addressBytes = hexStringToBytes(address)._unsafeUnwrap();
+    const verificationResult = await client.getVerification({
+      fid,
+      address: addressBytes,
     });
+
+    returnResult(res, verificationResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const addressBytes = hexStringToBytes(address)._unsafeUnwrap();
-  const verificationResult = await client.getVerification({
-    fid,
-    address: addressBytes,
-  });
-
-  returnResult(res, verificationResult);
-});
+);
 
 /**
  * Returns all active verifications for Ethereum addresses made by a user in reverse chronological order.
@@ -715,19 +675,17 @@ app.post("/get-verification", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-verifications-by-fid", async (req, res) => {
-  const { fid } = req.body;
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-verifications-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const { fid } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const verificationsResult = await client.getVerificationsByFid({ fid });
+
+    returnResult(res, verificationsResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const verificationsResult = await client.getVerificationsByFid({ fid });
-
-  returnResult(res, verificationsResult);
-});
+);
 
 /**
  * Returns all active and inactive verifications for Ethereum addresses made by a user in reverse chronological order.
@@ -739,21 +697,19 @@ app.post("/get-verifications-by-fid", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-all-verification-messages-by-fid", async (req, res) => {
-  const { fid } = req.body;
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-all-verification-messages-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const { fid } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const verificationsResult = await client.getAllVerificationMessagesByFid({
+      fid,
+    });
+
+    returnResult(res, verificationsResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const verificationsResult = await client.getAllVerificationMessagesByFid({
-    fid,
-  });
-
-  returnResult(res, verificationsResult);
-});
+);
 
 // Start the server
 const port = process.env.PORT || 3000;
