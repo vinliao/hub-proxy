@@ -12,6 +12,12 @@ const {
   userDataTypeFromJSON,
   reactionTypeFromJSON,
 } = require("@farcaster/hub-nodejs");
+const {
+  isNumber,
+  isHexString,
+  isString,
+  isByteArray,
+} = require("./validators");
 
 // Load environment variables from .env file
 dotenv.config();
@@ -25,6 +31,20 @@ console.log(`Connecting to ${hubRpcEndpoint}...`);
 
 // Use JSON middleware
 app.use(express.json());
+
+function validationMiddleware(validationRules) {
+  return (req, res, next) => {
+    for (const [key, validator] of Object.entries(validationRules)) {
+      const validationResult = validator(req.body, key);
+
+      if (!validationResult.isValid) {
+        return res.status(400).json({ error: validationResult.error });
+      }
+    }
+
+    next();
+  };
+}
 
 const returnResult = (res, result) => {
   console.log(res.req.originalUrl);
@@ -480,26 +500,27 @@ app.post("/get-casts-by-mention", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}'
  */
-app.post("/get-casts-by-parent", async (req, res) => {
-  const { fid, hash, pageSize, pageToken, reverse } = req.body;
-  // TODO: additional checks here
-  if (typeof fid !== "number" || typeof hash !== "string") {
-    return res.status(400).json({
-      error: "Invalid input. Expected a number for fid and a string for hash.",
+app.post(
+  "/get-casts-by-parent",
+  validationMiddleware({
+    // TODO: additional checks for pageSize, pageToken, and reverse
+    fid: isNumber,
+    hash: isHexString,
+  }),
+  async (req, res) => {
+    const { fid, hash, pageSize, pageToken, reverse } = req.body;
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
+    const castsResult = await client.getCastsByParent({
+      castId: { fid, hash: castHashBytes },
+      pageSize,
+      pageToken,
+      reverse,
     });
+
+    returnResult(res, castsResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
-  const castsResult = await client.getCastsByParent({
-    castId: { fid, hash: castHashBytes },
-    pageSize,
-    pageToken,
-    reverse,
-  });
-
-  returnResult(res, castsResult);
-});
+);
 
 /**
  * Get all active and inactive casts for a user in reverse chronological order.
@@ -514,24 +535,28 @@ app.post("/get-casts-by-parent", async (req, res) => {
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
-app.post("/get-all-cast-messages-by-fid", async (req, res) => {
-  const { fid, pageSize, pageToken, reverse } = req.body;
-  if (typeof fid !== "number") {
-    return res
-      .status(400)
-      .json({ error: "Invalid input. Expected a number for fid." });
+app.post(
+  "/get-all-cast-messages-by-fid",
+  validationMiddleware({ fid: isNumber }),
+  async (req, res) => {
+    const { fid, pageSize, pageToken, reverse } = req.body;
+    if (typeof fid !== "number") {
+      return res
+        .status(400)
+        .json({ error: "Invalid input. Expected a number for fid." });
+    }
+
+    const client = getSSLHubRpcClient(hubRpcEndpoint);
+    const castsResult = await client.getAllCastMessagesByFid({
+      fid,
+      pageSize,
+      pageToken,
+      reverse,
+    });
+
+    returnResult(res, castsResult);
   }
-
-  const client = getSSLHubRpcClient(hubRpcEndpoint);
-  const castsResult = await client.getAllCastMessagesByFid({
-    fid,
-    pageSize,
-    pageToken,
-    reverse,
-  });
-
-  returnResult(res, castsResult);
-});
+);
 
 /**
  * Get an active reaction of a particular type made by a user to a cast.
