@@ -70,7 +70,7 @@ app.get("/", (req, res) => {
  * @returns {Object} res - The JSON response object.
  * @example
  * curl --request GET \
- *   --url http://localhost:3000/get-farcaster-time
+ *   --url https://hub-proxy-production.up.railway.app/get-farcaster-time
  */
 app.get("/get-farcaster-time", (req, res) => {
   res.json({ result: getFarcasterTime()._unsafeUnwrap() });
@@ -82,7 +82,7 @@ app.get("/get-farcaster-time", (req, res) => {
  * @param {number} req.body.msTimestamp - The Unix timestamp in milliseconds.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/to-farcaster-time \
+ *   --url https://hub-proxy-production.up.railway.app/to-farcaster-time \
  *   --header 'Content-Type: application/json' \
  *   --data '{
  *     "msTimestamp": 1649133661000
@@ -103,7 +103,7 @@ app.post(
  * @param {number} req.body.farcasterTimestamp - The Farcaster timestamp in milliseconds.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/from-farcaster-time \
+ *   --url https://hub-proxy-production.up.railway.app/from-farcaster-time \
  *   --header 'Content-Type: application/json' \
  *   --data '{
  *     "farcasterTimestamp": 70160902
@@ -124,7 +124,7 @@ app.post(
  * @param {Uint8Array} req.body.byteArray - The byte array to convert.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/bytes-to-hex-string \
+ *   --url https://hub-proxy-production.up.railway.app/bytes-to-hex-string \
  *   --header 'Content-Type: application/json' \
  *   --data '{
  *     "byteArray": [1, 2, 3]
@@ -146,7 +146,7 @@ app.post(
  * @param {string} req.body.hexString - The hex string to convert.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/hex-string-to-bytes \
+ *   --url https://hub-proxy-production.up.railway.app/hex-string-to-bytes \
  *   --header 'Content-Type: application/json' \
  *   --data '{
  *     "hexString": "0x010203"
@@ -167,7 +167,7 @@ app.post(
  * @param {Uint8Array} req.body.byteArray - The byte array to convert.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/bytes-to-utf8-string \
+ *   --url https://hub-proxy-production.up.railway.app/bytes-to-utf8-string \
  *   --header 'Content-Type: application/json' \
  *   --data '{
  *     "byteArray": [72, 101, 108, 108, 111]
@@ -190,7 +190,7 @@ app.post(
  * @param {string} req.body.signerPubKeyHex - The public key of the signer as a hexadecimal string.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-signer \
+ *   --url https://hub-proxy-production.up.railway.app/get-signer \
  *   --header 'Content-Type: application/json' \
  *   --data '{
  *     "fid": 2,
@@ -218,7 +218,7 @@ app.post(
  * @param {number} req.body.fid - The fid of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-signers-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-signers-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -240,7 +240,7 @@ app.post(
  * @param {number} req.body.fid - The fid of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-all-signer-messages-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-all-signer-messages-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -263,7 +263,7 @@ app.post(
  * @param {string} req.body.userDataType - The type of user metadata (e.g., "DISPLAY").
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-user-data \
+ *   --url https://hub-proxy-production.up.railway.app/get-user-data \
  *   --header 'Content-Type: application/json' \
  *   --data '{
  *     "fid": 2,
@@ -291,7 +291,7 @@ app.post(
  * @param {number} req.body.fid - The fid of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-user-data-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-user-data-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -313,7 +313,7 @@ app.post(
  * @param {number} req.body.fid - The fid of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-all-user-data-messages-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-all-user-data-messages-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -335,7 +335,7 @@ app.post(
  * @param {number} req.body.fid - The fid of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-id-registry-event \
+ *   --url https://hub-proxy-production.up.railway.app/get-id-registry-event \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -357,7 +357,7 @@ app.post(
  * @param {string} req.body.fname - The fname of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-name-registry-event \
+ *   --url https://hub-proxy-production.up.railway.app/get-name-registry-event \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fname": "v"}'
  */
@@ -381,7 +381,7 @@ app.post(
  * @param {string} req.body.hash - The hash of the cast.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-cast \
+ *   --url https://hub-proxy-production.up.railway.app/get-cast \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2, "hash": "460a87ace7014adefe4a2944fb62833b1bf2a6be"}'
  */
@@ -407,7 +407,7 @@ app.post(
  * @param {boolean?} req.body.reverse - Reverses the chronological ordering.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-casts-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-casts-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -438,7 +438,7 @@ app.post(
  * @param {boolean?} req.body.reverse - Reverses the chronological ordering.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-casts-by-mention \
+ *   --url https://hub-proxy-production.up.railway.app/get-casts-by-mention \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -470,7 +470,7 @@ app.post(
  * @param {boolean?} req.body.reverse - Reverses the chronological ordering.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-casts-by-parent \
+ *   --url https://hub-proxy-production.up.railway.app/get-casts-by-parent \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}'
  */
@@ -502,7 +502,7 @@ app.post(
  * @param {boolean?} req.body.reverse - Reverses the chronological ordering.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-all-cast-messages-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-all-cast-messages-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -532,7 +532,7 @@ app.post(
  * @param {Object} req.body.castId - The cast id.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-reaction \
+ *   --url https://hub-proxy-production.up.railway.app/get-reaction \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 8150, "reactionType": "REACTION_TYPE_LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
  */
@@ -567,7 +567,7 @@ app.post(
  * @param {Object} req.body.castId - The cast id.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-reactions-by-cast \
+ *   --url https://hub-proxy-production.up.railway.app/get-reactions-by-cast \
  *   --header 'Content-Type: application/json' \
  *   --data '{"reactionType": "REACTION_TYPE_LIKE", "castId": {"fid": 2, "hash": "ee04762bea3060ce3cca154bced5947de04aa253"}}'
  */
@@ -597,7 +597,7 @@ app.post(
  * @param {string} req.body.reactionType - The type of the reaction.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-reactions-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-reactions-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2, "reactionType": "REACTION_TYPE_LIKE"}'
  */
@@ -622,7 +622,7 @@ app.post(
  * @param {number} req.body.fid - The fid of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-all-reaction-messages-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-all-reaction-messages-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -645,7 +645,7 @@ app.post(
  * @param {string} req.body.address - The Ethereum address being verified.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-verification \
+ *   --url https://hub-proxy-production.up.railway.app/get-verification \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2, "address": "0x2D596314b27dcf1d6a4296e95D9a4897810cE4b5"}'
  */
@@ -671,7 +671,7 @@ app.post(
  * @param {number} req.body.fid - The fid of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-verifications-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-verifications-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
@@ -693,7 +693,7 @@ app.post(
  * @param {number} req.body.fid - The fid of the user.
  * @example
  * curl --request POST \
- *   --url http://localhost:3000/get-all-verification-messages-by-fid \
+ *   --url https://hub-proxy-production.up.railway.app/get-all-verification-messages-by-fid \
  *   --header 'Content-Type: application/json' \
  *   --data '{"fid": 2}'
  */
