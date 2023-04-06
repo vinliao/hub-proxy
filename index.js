@@ -61,7 +61,7 @@ const returnResult = (res, result) => {
 
 // Define a route for the home page
 app.get("/", (req, res) => {
-  res.json({ message: "hello world" });
+  res.json({ message: "hello world, docs: https://github.com/vinliao/hub-proxy" });
 });
 
 /**
