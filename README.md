@@ -1,8 +1,8 @@
 # Farcaster Hub Proxy
 
-A temporary proxy to fetch data from Farcaster Hub. Please note that this is only a temporary solution and will be replaced by language-specific packages and modules to talk to Farcaster Hub.
+A proxy to fetch data from Farcaster Hub. It provides all read-only functions from [hub-nodejs](https://github.com/farcasterxyz/hub-monorepo/tree/main/packages/hub-nodejs) as APIs. Please note that this is only a temporary solution and will be replaced by language-specific packages and modules to talk to Farcaster Hub.
 
-Please head to [index.js](index.js) to see the available endpoints. It provides all read-only functions from [hub-nodejs](https://github.com/farcasterxyz/hub-monorepo/tree/main/packages/hub-nodejs). All the functions are well-documented, you should be able to get up and running quickly.
+Please head to [index.js](index.js) to see the available endpoints. All the functions are well-documented, you should be able to get up and running quickly.
 
 Example usage:
 
