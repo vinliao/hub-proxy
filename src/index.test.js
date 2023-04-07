@@ -1,5 +1,5 @@
 const request = require("supertest");
-const app = require("./index");
+const { app, server } = require("./index");
 
 describe("POST /to-farcaster-time", () => {
   test("Should return 200 with valid input", async () => {
@@ -472,4 +472,9 @@ describe("POST /get-all-verification-messages-by-fid", () => {
 
     expect(response.status).toBe(400);
   });
+});
+
+// Close the server after all tests are finished
+afterAll(() => {
+  server.close();
 });

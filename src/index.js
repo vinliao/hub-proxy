@@ -61,7 +61,9 @@ const returnResult = (res, result) => {
 
 // Define a route for the home page
 app.get("/", (req, res) => {
-  res.json({ message: "hello world, docs: https://github.com/vinliao/hub-proxy" });
+  res.json({
+    message: "hello world, docs: https://github.com/vinliao/hub-proxy",
+  });
 });
 
 /**
@@ -713,8 +715,8 @@ app.post(
 
 // Start the server
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server is listening on port ${port}.`);
 });
 
-module.exports = app;
+module.exports = { app, server };
