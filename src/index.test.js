@@ -1,5 +1,12 @@
 const request = require("supertest");
-const { app, server } = require("./index");
+const dotenv = require("dotenv");
+dotenv.config();
+
+const testExternal = process.env.TEST_EXTERNAL === "1";
+const app = testExternal
+  ? "https://hub-proxy-production.up.railway.app"
+  : require("./index").app;
+const server = testExternal ? undefined : require("./index").server;
 
 describe("POST /to-farcaster-time", () => {
   test("Should return 200 with valid input", async () => {
@@ -476,5 +483,5 @@ describe("POST /get-all-verification-messages-by-fid", () => {
 
 // Close the server after all tests are finished
 afterAll(() => {
-  server.close();
+  if (server) server.close();
 });
