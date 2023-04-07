@@ -25,14 +25,18 @@ dotenv.config();
 
 // Create an instance of the Express application
 const app = express();
+
+// Initialize the hub rpc client
 const hubRpcEndpoint =
   process.env.MAINNET_HUB_RPC_URL || "testnet1.farcaster.xyz:2283";
+const client = getSSLHubRpcClient(hubRpcEndpoint);
 
 console.log(`Connecting to ${hubRpcEndpoint}...`);
 
 // Use JSON middleware
 app.use(express.json());
 
+// Middleware to validate request body
 function validationMiddleware(validationRules) {
   return (req, res, next) => {
     for (const [key, validator] of Object.entries(validationRules)) {
@@ -47,11 +51,12 @@ function validationMiddleware(validationRules) {
   };
 }
 
+// Function to handle `HubResult` type
 const returnResult = (res, result) => {
   console.log(res.req.originalUrl);
   console.log(result);
   if (result.isErr()) {
-    // not returning 400 because it's not an endpoint params error
+    // returning 200 because the error here is out of the proxy's scope
     // could be a bad choice...
     res.json({ error: result._unsafeUnwrapErr() });
   } else {
@@ -204,7 +209,6 @@ app.post(
   validationMiddleware({ fid: isNumber, signerPubKeyHex: isHexString }),
   async (req, res) => {
     const { fid, signerPubKeyHex } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const signerResult = await client.getSigner({
       fid,
       signer: hexStringToBytes(signerPubKeyHex)._unsafeUnwrap(),
@@ -229,7 +233,6 @@ app.post(
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
     const fid = req.body.fid;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const signersResult = await client.getAllSignerMessagesByFid({ fid });
 
     returnResult(res, signersResult);
@@ -251,7 +254,6 @@ app.post(
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
     const fid = req.body.fid;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const signersResult = await client.getAllSignerMessagesByFid({ fid });
 
     returnResult(res, signersResult);
@@ -277,7 +279,6 @@ app.post(
   validationMiddleware({ fid: isNumber, userDataType: isString }),
   async (req, res) => {
     const { fid, userDataType } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const userDataResult = await client.getUserData({
       fid,
       userDataType: userDataTypeFromJSON(userDataType),
@@ -302,7 +303,6 @@ app.post(
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
     const fid = req.body.fid;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
 
     returnResult(res, userDataResult);
@@ -324,7 +324,6 @@ app.post(
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
     const fid = req.body.fid;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const userDataResult = await client.getAllUserDataMessagesByFid({ fid });
 
     returnResult(res, userDataResult);
@@ -346,7 +345,6 @@ app.post(
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
     const { fid } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const idResult = await client.getIdRegistryEvent({ fid });
 
     returnResult(res, idResult);
@@ -368,7 +366,6 @@ app.post(
   validationMiddleware({ fname: isString }),
   async (req, res) => {
     const { fname } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const fnameBytes = new TextEncoder().encode(fname);
     const fnameResult = await client.getNameRegistryEvent({ name: fnameBytes });
 
@@ -392,7 +389,6 @@ app.post(
   validationMiddleware({ fid: isNumber, hash: isHexString }),
   async (req, res) => {
     const { fid, hash } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
     const castResult = await client.getCast({ fid, hash: castHashBytes });
 
@@ -419,7 +415,6 @@ app.post(
   async (req, res) => {
     // TODO: validate other params
     const { fid, pageSize, pageToken, reverse } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const castsResult = await client.getCastsByFid({
       fid,
       pageSize,
@@ -450,7 +445,6 @@ app.post(
   async (req, res) => {
     // TODO: validate other params
     const { fid, pageSize, pageToken, reverse } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const castsResult = await client.getCastsByMention({
       fid,
       pageSize,
@@ -482,7 +476,6 @@ app.post(
   async (req, res) => {
     // TODO: additional checks for pageSize, pageToken, and reverse
     const { fid, hash, pageSize, pageToken, reverse } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const castHashBytes = hexStringToBytes(hash)._unsafeUnwrap();
     const castsResult = await client.getCastsByParent({
       castId: { fid, hash: castHashBytes },
@@ -514,7 +507,6 @@ app.post(
   async (req, res) => {
     // TODO: validate other params
     const { fid, pageSize, pageToken, reverse } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const castsResult = await client.getAllCastMessagesByFid({
       fid,
       pageSize,
@@ -547,7 +539,6 @@ app.post(
   }),
   async (req, res) => {
     const { fid, reactionType, castId } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const hashBytes = hexStringToBytes(castId.hash)._unsafeUnwrap();
     const reactionResult = await client.getReaction({
       fid,
@@ -581,7 +572,6 @@ app.post(
   }),
   async (req, res) => {
     const { reactionType, castId } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const hashBytes = hexStringToBytes(castId.hash)._unsafeUnwrap();
     const reactionsResult = await client.getReactionsByCast({
       reactionType: reactionTypeFromJSON(reactionType),
@@ -608,7 +598,6 @@ app.post(
   validationMiddleware({ fid: isNumber, reactionType: isString }),
   async (req, res) => {
     const { fid, reactionType } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const reactionsResult = await client.getReactionsByFid({
       fid,
       reactionType: reactionTypeFromJSON(reactionType),
@@ -633,7 +622,6 @@ app.post(
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
     const fid = req.body.fid;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const reactionsResult = await client.getAllReactionMessagesByFid({ fid });
 
     returnResult(res, reactionsResult);
@@ -656,7 +644,6 @@ app.post(
   validationMiddleware({ fid: isNumber, address: isHexString }),
   async (req, res) => {
     const { fid, address } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const addressBytes = hexStringToBytes(address)._unsafeUnwrap();
     const verificationResult = await client.getVerification({
       fid,
@@ -682,7 +669,6 @@ app.post(
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
     const { fid } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const verificationsResult = await client.getVerificationsByFid({ fid });
 
     returnResult(res, verificationsResult);
@@ -704,7 +690,6 @@ app.post(
   validationMiddleware({ fid: isNumber }),
   async (req, res) => {
     const { fid } = req.body;
-    const client = getSSLHubRpcClient(hubRpcEndpoint);
     const verificationsResult = await client.getAllVerificationMessagesByFid({
       fid,
     });
